@@ -143,7 +143,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                 borderRadius: BorderRadius.circular(18),
                               ),
                             ),
-                            onPressed: () {},
+                            onPressed: () { Navigator.pushNamed(context, '/signup');
+                            },
                             child: const Text(
                               "Sign up",
                               style: TextStyle(
