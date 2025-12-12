@@ -97,7 +97,7 @@ class _LoginScreenState extends State<LoginScreen>
                     // 📌 Email Field
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.12),
+                        color: Colors.white.withValues(alpha: .12),
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(color: Colors.white30),
                       ),
@@ -119,7 +119,7 @@ class _LoginScreenState extends State<LoginScreen>
                     // 🔐 Password Field
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.12),
+                        color: Colors.white.withValues(alpha:0.12),
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(color: Colors.white30),
                       ),

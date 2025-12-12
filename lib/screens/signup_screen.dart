@@ -54,7 +54,7 @@ class _SignUpScreenState extends State<SignUpScreen>
         width: double.infinity,
         height: double.infinity,
 
-        // 🌈 Gradient matching the app theme
+        // Gradient matching the app theme
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             colors: [
@@ -141,7 +141,7 @@ class _SignUpScreenState extends State<SignUpScreen>
 
                       Container(
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.15),
+                          color: Colors.white.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(18),
                           border: Border.all(color: Colors.white30, width: 1.5),
                         ),
@@ -233,7 +233,7 @@ class _SignUpScreenState extends State<SignUpScreen>
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.12),
+        color: Colors.white.withValues(alpha: .12),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: Colors.white30),
       ),

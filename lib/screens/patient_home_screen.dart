@@ -11,10 +11,10 @@ class PatientHomeScreen extends StatefulWidget {
   const PatientHomeScreen({super.key});
 
   @override
-  _PatientHomeScreenState createState() => _PatientHomeScreenState();
+  PatientHomeScreenState createState() => PatientHomeScreenState();
 }
 
-class _PatientHomeScreenState extends State<PatientHomeScreen> {
+class PatientHomeScreenState extends State<PatientHomeScreen> {
   final int _currentIndex = 0;
 
   final uid = FirebaseAuth.instance.currentUser!.uid;
