@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -9,13 +11,17 @@ class SignUpScreen extends StatefulWidget {
 
 class _SignUpScreenState extends State<SignUpScreen>
     with SingleTickerProviderStateMixin {
-
   late AnimationController _controller;
   late Animation<double> _fade;
   late Animation<Offset> _slide;
 
   // 🔹 ROLE SELECTION
   String selectedRole = "Patient"; // Default
+
+  // 🔹 Controllers for input fields
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
 
   @override
   void initState() {
@@ -43,9 +49,11 @@ class _SignUpScreenState extends State<SignUpScreen>
   @override
   void dispose() {
     _controller.dispose();
+    _nameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -53,8 +61,6 @@ class _SignUpScreenState extends State<SignUpScreen>
       body: Container(
         width: double.infinity,
         height: double.infinity,
-
-        // Gradient matching the app theme
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             colors: [
@@ -65,7 +71,6 @@ class _SignUpScreenState extends State<SignUpScreen>
             end: Alignment.bottomCenter,
           ),
         ),
-
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 26),
@@ -76,10 +81,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                 child: SingleChildScrollView(
                   child: Column(
                     children: [
-
                       const SizedBox(height: 20),
-
-                      // Header
                       const Text(
                         "Create Account",
                         style: TextStyle(
@@ -96,15 +98,14 @@ class _SignUpScreenState extends State<SignUpScreen>
                           fontSize: 16,
                         ),
                       ),
-
                       const SizedBox(height: 35),
 
                       // 🔹 NAME FIELD
                       _inputField(
                         hint: "Full Name",
                         icon: Icons.person,
+                        controller: _nameController,
                       ),
-
                       const SizedBox(height: 18),
 
                       // 🔹 EMAIL FIELD
@@ -112,8 +113,8 @@ class _SignUpScreenState extends State<SignUpScreen>
                         hint: "Email",
                         icon: Icons.email,
                         keyboard: TextInputType.emailAddress,
+                        controller: _emailController,
                       ),
-
                       const SizedBox(height: 18),
 
                       // 🔹 PASSWORD FIELD
@@ -121,11 +122,10 @@ class _SignUpScreenState extends State<SignUpScreen>
                         hint: "Password",
                         icon: Icons.lock,
                         isPassword: true,
+                        controller: _passwordController,
                       ),
-
                       const SizedBox(height: 28),
 
-                      // 🌟 ROLE SELECTOR
                       const Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
@@ -152,7 +152,6 @@ class _SignUpScreenState extends State<SignUpScreen>
                           ],
                         ),
                       ),
-
                       const SizedBox(height: 35),
 
                       // 🔵 CREATE ACCOUNT BUTTON
@@ -168,12 +167,44 @@ class _SignUpScreenState extends State<SignUpScreen>
                               borderRadius: BorderRadius.circular(16),
                             ),
                           ),
-                          onPressed: () {
-                            // FOR NOW: Navigate by role
-                            if (selectedRole == "Patient") {
-                              Navigator.pushNamed(context, '/patient-home');
-                            } else {
-                              Navigator.pushNamed(context, '/dermatologist-home');
+                          onPressed: () async {
+                            final name = _nameController.text.trim();
+                            final email = _emailController.text.trim();
+                            final password = _passwordController.text;
+
+                            if (email.isEmpty || password.isEmpty || name.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text("Please fill all fields")),
+                              );
+                              return;
+                            }
+
+                            try {
+                              final userCred = await FirebaseAuth.instance
+                                  .createUserWithEmailAndPassword(
+                                      email: email, password: password);
+
+                              final uid = userCred.user!.uid;
+
+                              await FirebaseFirestore.instance
+                                  .collection('users')
+                                  .doc(uid)
+                                  .set({
+                                'name': name,
+                                'email': email,
+                                'role': selectedRole,
+                                'createdAt': FieldValue.serverTimestamp(),
+                              });
+
+                              if (selectedRole == "Patient") {
+                                Navigator.pushReplacementNamed(context, '/patient-home');
+                              } else {
+                                Navigator.pushReplacementNamed(context, '/dermatologist-home');
+                              }
+                            } catch (e) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text("Sign-up failed: $e")),
+                              );
                             }
                           },
                           child: const Text(
@@ -185,10 +216,8 @@ class _SignUpScreenState extends State<SignUpScreen>
                           ),
                         ),
                       ),
-
                       const SizedBox(height: 25),
 
-                      // Already have account?
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -210,9 +239,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                           )
                         ],
                       ),
-
                       const SizedBox(height: 30),
-
                     ],
                   ),
                 ),
@@ -228,6 +255,7 @@ class _SignUpScreenState extends State<SignUpScreen>
   Widget _inputField({
     required String hint,
     required IconData icon,
+    required TextEditingController controller,
     bool isPassword = false,
     TextInputType keyboard = TextInputType.text,
   }) {
@@ -238,6 +266,7 @@ class _SignUpScreenState extends State<SignUpScreen>
         border: Border.all(color: Colors.white30),
       ),
       child: TextField(
+        controller: controller,
         obscureText: isPassword,
         keyboardType: keyboard,
         style: const TextStyle(color: Colors.white),
@@ -285,4 +314,5 @@ class _SignUpScreenState extends State<SignUpScreen>
     );
   }
 }
+
 
