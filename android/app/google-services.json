@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1034896118654",
+    "project_id": "dermpix-14695",
+    "storage_bucket": "dermpix-14695.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1034896118654:android:83250d26a5677f4341192f",
+        "android_client_info": {
+          "package_name": "com.example.derm_pix"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC4PQPH9LuXAyFSY_HpIUBHj7yL5S71vxY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -31,7 +31,7 @@ class DermPixApp extends StatelessWidget {
       routes: {
         '/welcome': (_) => const WelcomeScreen(),
         '/login': (_) => const LoginScreen(),
-        '/patient-home': (_) => const PatientHomeScreen(),
+        '/patient-home': (_) =>  PatientHomeScreen(),
         '/dermatologist-home': (_) => const DermatologistHomeScreen(),
         '/upload': (_) => const UploadScreen(),
         '/patient-detail': (_) => const PatientDetailScreen(),
