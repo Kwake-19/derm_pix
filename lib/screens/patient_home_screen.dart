@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
-
+import 'package:firebase_database/firebase_database.dart';
 
 import 'upload_screen.dart';
 import 'patient_profile_screen.dart';
@@ -11,25 +9,46 @@ class PatientHomeScreen extends StatefulWidget {
   const PatientHomeScreen({super.key});
 
   @override
-  PatientHomeScreenState createState() => PatientHomeScreenState();
+  State<PatientHomeScreen> createState() => _PatientHomeScreenState();
 }
 
-class PatientHomeScreenState extends State<PatientHomeScreen> {
+class _PatientHomeScreenState extends State<PatientHomeScreen> {
   final int _currentIndex = 0;
 
-  final uid = FirebaseAuth.instance.currentUser!.uid;
+  final String uid = FirebaseAuth.instance.currentUser!.uid;
 
-  final List<Widget> _screens = [
-    const SizedBox(), // placeholder for Home tab
+  late final DatabaseReference userRef;
+
+  final List<Widget> _screens = const [
+    SizedBox(), // Home placeholder
     UploadScreen(),
     PatientProfileScreen(),
   ];
 
   @override
+  void initState() {
+    super.initState();
+    userRef = FirebaseDatabase.instance.ref("users/$uid");
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[100],
-
+ // ✅ DARK APP BAR WITH BACK BUTTON
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF0B6F77),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          "Home",
+          style: TextStyle(color: Colors.white),
+        ),
+        centerTitle: true,
+      ),
       // --------------------------
       // Bottom Navigation Bar
       // --------------------------
@@ -38,7 +57,8 @@ class PatientHomeScreenState extends State<PatientHomeScreen> {
         selectedItemColor: Colors.blue,
         unselectedItemColor: Colors.grey,
         onTap: (index) {
-          if (index == 0) return; // Home is this screen itself
+          if (index == 0) return;
+
           Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => _screens[index]),
@@ -61,21 +81,22 @@ class PatientHomeScreenState extends State<PatientHomeScreen> {
       ),
 
       // --------------------------
-      // BODY OF THE SCREEN
+      // BODY
       // --------------------------
       body: SafeArea(
-        child: StreamBuilder<DocumentSnapshot>(
-          stream: FirebaseFirestore.instance
-              .collection('patients')
-              .doc(uid)
-              .snapshots(),
+        child: StreamBuilder<DatabaseEvent>(
+          stream: userRef.onValue,
           builder: (context, snapshot) {
-            if (!snapshot.hasData) {
-              return Center(child: CircularProgressIndicator());
+            if (!snapshot.hasData ||
+                snapshot.data!.snapshot.value == null) {
+              return const Center(child: CircularProgressIndicator());
             }
 
-            final data = snapshot.data!;
-            final dermId = data['assignedDermatologist'];
+            final data = Map<String, dynamic>.from(
+              snapshot.data!.snapshot.value as Map,
+            );
+
+            final dermId = data["assignedDermatologist"];
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -85,10 +106,10 @@ class PatientHomeScreenState extends State<PatientHomeScreen> {
                 // --------------------------
                 Container(
                   width: double.infinity,
-                  padding: EdgeInsets.all(20),
-                  decoration: BoxDecoration(
+                  padding: const EdgeInsets.all(20),
+                  decoration: const BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [Colors.blue, Colors.blueAccent],
+                      colors: [Color.fromARGB(255, 127, 43, 228), Color.fromARGB(255, 83, 25, 176)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
@@ -96,7 +117,7 @@ class PatientHomeScreenState extends State<PatientHomeScreen> {
                       bottom: Radius.circular(25),
                     ),
                   ),
-                  child: Column(
+                  child: const Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
@@ -109,7 +130,7 @@ class PatientHomeScreenState extends State<PatientHomeScreen> {
                       ),
                       SizedBox(height: 10),
                       Text(
-                        "Your Dermatology Dashboard",
+                        "Your Dashboard",
                         style: TextStyle(
                           color: Colors.white70,
                           fontSize: 16,
@@ -119,25 +140,28 @@ class PatientHomeScreenState extends State<PatientHomeScreen> {
                   ),
                 ),
 
-                SizedBox(height: 30),
+                const SizedBox(height: 30),
 
                 // --------------------------
                 // ASSIGNED DERMATOLOGIST
                 // --------------------------
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Card(
                     elevation: 3,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(15),
                     ),
                     child: Padding(
-                      padding: const EdgeInsets.all(20.0),
+                      padding: const EdgeInsets.all(20),
                       child: dermId == null
                           ? Row(
-                              children: [
-                                Icon(Icons.warning_amber_rounded,
-                                    color: Colors.orange, size: 34),
+                              children: const [
+                                Icon(
+                                  Icons.warning_amber_rounded,
+                                  color: Colors.orange,
+                                  size: 34,
+                                ),
                                 SizedBox(width: 20),
                                 Expanded(
                                   child: Text(
@@ -149,13 +173,16 @@ class PatientHomeScreenState extends State<PatientHomeScreen> {
                             )
                           : Row(
                               children: [
-                                Icon(Icons.verified_user,
-                                    color: Colors.green, size: 34),
-                                SizedBox(width: 20),
+                                const Icon(
+                                  Icons.verified_user,
+                                  color: Colors.green,
+                                  size: 34,
+                                ),
+                                const SizedBox(width: 20),
                                 Expanded(
                                   child: Text(
                                     "Assigned Dermatologist:\n$dermId",
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -167,7 +194,7 @@ class PatientHomeScreenState extends State<PatientHomeScreen> {
                   ),
                 ),
 
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
               ],
             );
           },
