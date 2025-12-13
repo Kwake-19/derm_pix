@@ -10,6 +10,8 @@ import '../screens/patient_detail_screen.dart';
 import '../screens/signup_screen.dart';
 import '../screens/patient_setup_screen.dart';
 import '../screens/dermatologist_setup_screen.dart';
+import '../screens/dermatologist_profile_screen.dart';
+
 
 
 class DermPixApp extends StatelessWidget {
@@ -40,6 +42,8 @@ class DermPixApp extends StatelessWidget {
         '/signup': (context) => const SignUpScreen(),
         '/patient-setup': (context) => const PatientSetupScreen(),
         '/dermatologist-setup': (context) => const DermatologistSetupScreen(),
+        '/dermatologist-profile': (context) => const DermatologistProfileScreen(),
+
 
 
       },

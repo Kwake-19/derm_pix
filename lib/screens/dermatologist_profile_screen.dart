@@ -1,23 +1,18 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 
-import '../main.dart'; // contains cameras
-import 'camera_capture_screen.dart';
-
-class PatientProfileScreen extends StatefulWidget {
-  const PatientProfileScreen({super.key});
+class DermatologistProfileScreen extends StatefulWidget {
+  const DermatologistProfileScreen({super.key});
 
   @override
-  State<PatientProfileScreen> createState() => _PatientProfileScreenState();
+  State<DermatologistProfileScreen> createState() =>
+      _DermatologistProfileScreenState();
 }
 
-class _PatientProfileScreenState extends State<PatientProfileScreen> {
+class _DermatologistProfileScreenState
+    extends State<DermatologistProfileScreen> {
   final String uid = FirebaseAuth.instance.currentUser!.uid;
-
-  File? _localProfileImage;
 
   // ------------------
   // LOAD PROFILE
@@ -36,26 +31,6 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
   }
 
   // ------------------
-  // OPEN REAL-TIME CAMERA
-  // ------------------
-  Future<void> _openCamera() async {
-    final File? imageFile = await Navigator.push<File?>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => CameraCaptureScreen(
-          camera: cameras.first,
-        ),
-      ),
-    );
-
-    if (imageFile != null && mounted) {
-      setState(() {
-        _localProfileImage = imageFile;
-      });
-    }
-  }
-
-  // ------------------
   // LOGOUT
   // ------------------
   Future<void> _logout() async {
@@ -70,9 +45,6 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      resizeToAvoidBottomInset: false,
-      backgroundColor: const Color(0xFF04242A),
-
       // 🔷 DARK APP BAR
       appBar: AppBar(
         backgroundColor: const Color(0xFF0B6F77),
@@ -98,7 +70,6 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
         ),
         child: SafeArea(
           top: false,
-          bottom: false,
           child: FutureBuilder<Map<String, dynamic>>(
             future: _loadProfile(),
             builder: (context, snapshot) {
@@ -118,13 +89,12 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
               }
 
               final data = snapshot.data!;
-              final name = data["name"] ?? "Patient";
+              final name = data["name"] ?? "Dermatologist";
               final email = data["email"] ?? "-";
-              final age = data["age"] ?? "-";
+              final specialty = data["specialty"] ?? "Not specified";
               final phone = data["phone"] ?? "-";
-              final condition = data["condition"] ?? "-";
-              final dermatologist =
-                  data["assignedDermatologist"] ?? "Not assigned";
+              final bio = data["bio"] ??
+                  "No bio added yet. You can update this later.";
 
               return SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -132,39 +102,14 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                   children: [
                     const SizedBox(height: 30),
 
-                    // 👤 PROFILE IMAGE
-                    GestureDetector(
-                      onTap: _openCamera,
-                      child: Stack(
-                        alignment: Alignment.bottomRight,
-                        children: [
-                          CircleAvatar(
-                            radius: 60,
-                            backgroundColor: Colors.white.withValues(alpha:0.2),
-                            backgroundImage: _localProfileImage != null
-                                ? FileImage(_localProfileImage!)
-                                : null,
-                            child: _localProfileImage == null
-                                ? const Icon(
-                                    Icons.person,
-                                    size: 60,
-                                    color: Colors.white,
-                                  )
-                                : null,
-                          ),
-                          Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: const BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.camera_alt,
-                              size: 18,
-                              color: Color(0xFF0B6F77),
-                            ),
-                          ),
-                        ],
+                    // 👨‍⚕️ PROFILE AVATAR
+                    CircleAvatar(
+                      radius: 60,
+                      backgroundColor: Colors.white.withValues(alpha: 0.2),
+                      child: const Icon(
+                        Icons.medical_services_outlined,
+                        size: 60,
+                        color: Colors.white,
                       ),
                     ),
 
@@ -188,11 +133,21 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
 
                     const SizedBox(height: 30),
 
-                    _infoCard("Patient Information", [
-                      _infoRow("Age", age),
+                    _infoCard("Professional Information", [
+                      _infoRow("Specialty", specialty),
                       _infoRow("Phone", phone),
-                      _infoRow("Condition", condition),
-                      _infoRow("Dermatologist", dermatologist),
+                    ]),
+
+                    const SizedBox(height: 20),
+
+                    _infoCard("About", [
+                      Text(
+                        bio,
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 14,
+                        ),
+                      ),
                     ]),
 
                     const SizedBox(height: 30),
@@ -288,4 +243,3 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
     );
   }
 }
-
