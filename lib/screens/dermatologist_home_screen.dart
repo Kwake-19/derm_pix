@@ -131,21 +131,20 @@ class _DermatologistHomeScreenState extends State<DermatologistHomeScreen> {
                   width: double.infinity,
                   height: 55,
                   child: ElevatedButton.icon(
-                    icon: const Icon(Icons.qr_code_scanner),
+                    icon: const Icon(Icons.qr_code),
                     label: const Text(
-                      "Scan Patient QR Code",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+                             "Show My QR Code",
+                            style: TextStyle(
+                             fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                     ),
                     ),
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text("QR scanner coming soon"),
-                        ),
-                      );
-                    },
+                 
+                 onPressed: () {
+                     Navigator.pushNamed(context, '/dermatologist-qr');
+                  },
+
+
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: const Color(0xFF0B6F77),

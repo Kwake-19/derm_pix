@@ -4,6 +4,8 @@ import 'package:firebase_database/firebase_database.dart';
 
 import 'upload_screen.dart';
 import 'patient_profile_screen.dart';
+import 'package:derm_pix/screens/patient_qr_scanner_screen.dart';
+
 
 class PatientHomeScreen extends StatefulWidget {
   const PatientHomeScreen({super.key});
@@ -48,6 +50,20 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
           style: TextStyle(color: Colors.white),
         ),
         centerTitle: true,
+         actions: [
+          IconButton(
+            icon: const Icon(Icons.qr_code_scanner),
+            tooltip: "Scan dermatologist QR",
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const PatientQrScannerScreen(),
+                ),
+              );
+            },
+          ),
+        ],
       ),
       // --------------------------
       // Bottom Navigation Bar

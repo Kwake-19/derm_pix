@@ -15,6 +15,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   image_picker: ^1.0.7
   camera: ^0.10.5+9
+  qr_flutter: ^4.1.0
 
 
   # Firebase
@@ -22,6 +23,7 @@ dependencies:
   firebase_auth: ^4.17.5
   firebase_database: ^10.5.7
   firebase_storage: ^11.6.9
+  mobile_scanner: ^5.0.0
 
 dev_dependencies:
   flutter_test:
