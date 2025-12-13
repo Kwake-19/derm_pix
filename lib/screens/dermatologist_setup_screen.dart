@@ -49,13 +49,20 @@ class _DermatologistSetupScreenState extends State<DermatologistSetupScreen> {
     return Scaffold(
       resizeToAvoidBottomInset: false,
 
-      // ✅ TRANSPARENT APP BAR WITH VISIBLE BACK BUTTON
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          surfaceTintColor: Colors.transparent,
-          elevation: 0,
-          iconTheme: const IconThemeData(color: Colors.white),
+       // ✅ DARK APP BAR WITH BACK BUTTON
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF0B6F77),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
         ),
+        title: const Text(
+          "Setup Profile",
+          style: TextStyle(color: Colors.white),
+        ),
+        centerTitle: true,
+      ),
 
 
       body: Container(

@@ -1,9 +1,11 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
+
+import '../main.dart'; // contains cameras
+import 'camera_capture_screen.dart';
 
 class PatientProfileScreen extends StatefulWidget {
   const PatientProfileScreen({super.key});
@@ -13,10 +15,13 @@ class PatientProfileScreen extends StatefulWidget {
 }
 
 class _PatientProfileScreenState extends State<PatientProfileScreen> {
-  final uid = FirebaseAuth.instance.currentUser!.uid;
+  final String uid = FirebaseAuth.instance.currentUser!.uid;
 
   File? _localProfileImage;
 
+  // ------------------
+  // LOAD PROFILE
+  // ------------------
   Future<Map<String, dynamic>> _loadProfile() async {
     final snapshot =
         await FirebaseDatabase.instance.ref("users/$uid").get();
@@ -30,30 +35,44 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
     );
   }
 
-  // 📸 TAKE PHOTO WITH CAMERA
-  Future<void> _takeProfilePhoto() async {
-    final picker = ImagePicker();
-    final picked =
-        await picker.pickImage(source: ImageSource.camera, imageQuality: 75);
+  // ------------------
+  // OPEN REAL-TIME CAMERA
+  // ------------------
+  Future<void> _openCamera() async {
+    final File? imageFile = await Navigator.push<File?>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CameraCaptureScreen(
+          camera: cameras.first,
+        ),
+      ),
+    );
 
-    if (picked == null) return;
-
-    setState(() {
-      _localProfileImage = File(picked.path);
-    });
-
-    // 🔔 Later: upload this file to Cloudinary
+    if (imageFile != null && mounted) {
+      setState(() {
+        _localProfileImage = imageFile;
+      });
+    }
   }
 
-  void _logout() async {
+  // ------------------
+  // LOGOUT
+  // ------------------
+  Future<void> _logout() async {
     await FirebaseAuth.instance.signOut();
     if (!mounted) return;
     Navigator.pushNamedAndRemoveUntil(context, "/", (_) => false);
   }
 
+  // ------------------
+  // UI
+  // ------------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: false,
+      backgroundColor: const Color(0xFF04242A),
+
       // 🔷 DARK APP BAR
       appBar: AppBar(
         backgroundColor: const Color(0xFF0B6F77),
@@ -79,6 +98,7 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
         ),
         child: SafeArea(
           top: false,
+          bottom: false,
           child: FutureBuilder<Map<String, dynamic>>(
             future: _loadProfile(),
             builder: (context, snapshot) {
@@ -112,9 +132,9 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                   children: [
                     const SizedBox(height: 30),
 
-                    // 👤 PROFILE IMAGE (CAMERA)
+                    // 👤 PROFILE IMAGE
                     GestureDetector(
-                      onTap: _takeProfilePhoto,
+                      onTap: _openCamera,
                       child: Stack(
                         alignment: Alignment.bottomRight,
                         children: [
@@ -125,8 +145,11 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                                 ? FileImage(_localProfileImage!)
                                 : null,
                             child: _localProfileImage == null
-                                ? const Icon(Icons.person,
-                                    size: 60, color: Colors.white)
+                                ? const Icon(
+                                    Icons.person,
+                                    size: 60,
+                                    color: Colors.white,
+                                  )
                                 : null,
                           ),
                           Container(
@@ -135,8 +158,11 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                               color: Colors.white,
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(Icons.camera_alt,
-                                size: 18, color: Color(0xFF0B6F77)),
+                            child: const Icon(
+                              Icons.camera_alt,
+                              size: 18,
+                              color: Color(0xFF0B6F77),
+                            ),
                           ),
                         ],
                       ),
@@ -262,3 +288,4 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
     );
   }
 }
+
