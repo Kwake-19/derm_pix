@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 
-import 'upload_screen.dart';
 import 'patient_profile_screen.dart';
 import 'patient_qr_scanner_screen.dart';
+import 'patient_dermatologist_screen.dart';
 
 class PatientHomeScreen extends StatefulWidget {
   const PatientHomeScreen({super.key});
@@ -17,21 +17,15 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
   int _currentIndex = 0;
 
   final String uid = FirebaseAuth.instance.currentUser!.uid;
-  late final DatabaseReference userRef;
-
-  final List<Widget> _screens = const [
-    SizedBox(), // Home placeholder
-    UploadScreen(),
-    PatientProfileScreen(),
-  ];
+  late final DatabaseReference _userRef;
 
   @override
   void initState() {
     super.initState();
-    userRef = FirebaseDatabase.instance.ref("users/$uid");
+    _userRef = FirebaseDatabase.instance.ref("users/$uid");
   }
 
-  // ✅ LOAD DERMATOLOGIST DETAILS
+  // 🔹 Load dermatologist profile
   Future<Map<String, dynamic>> _loadDermatologist(String dermUid) async {
     final snapshot =
         await FirebaseDatabase.instance.ref("users/$dermUid").get();
@@ -54,12 +48,15 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF0B6F77),
         elevation: 0,
-        title: const Text("Home", style: TextStyle(color: Colors.white)),
+        title: const Text(
+          "Home",
+          style: TextStyle(color: Colors.white),
+        ),
         centerTitle: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.qr_code_scanner, color: Colors.white),
-            tooltip: "Scan dermatologist QR",
+            tooltip: "Scan Dermatologist QR",
             onPressed: () {
               Navigator.push(
                 context,
@@ -72,26 +69,27 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
         ],
       ),
 
-      // 🔷 BOTTOM NAV
+      // 🔷 BOTTOM NAV (NO UPLOAD HERE ❌)
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         selectedItemColor: const Color(0xFF0B6F77),
         onTap: (index) {
-          if (index == 0) return;
+          if (index == _currentIndex) return;
+          setState(() => _currentIndex = index);
 
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => _screens[index]),
-          );
+          if (index == 1) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const PatientProfileScreen(),
+              ),
+            );
+          }
         },
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home_outlined),
             label: "Home",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.upload_file_outlined),
-            label: "Upload",
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),
@@ -103,18 +101,21 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
       // 🔷 BODY
       body: SafeArea(
         child: StreamBuilder<DatabaseEvent>(
-          stream: userRef.onValue,
+          stream: _userRef.onValue,
           builder: (context, snapshot) {
             if (!snapshot.hasData ||
                 snapshot.data!.snapshot.value == null) {
-              return const Center(child: CircularProgressIndicator());
+              return const Center(
+                child: CircularProgressIndicator(),
+              );
             }
 
-            final data = Map<String, dynamic>.from(
+            final userData = Map<String, dynamic>.from(
               snapshot.data!.snapshot.value as Map,
             );
 
-            final dermId = data["assignedDermatologist"];
+            final String? dermatologistUid =
+                userData["assignedDermatologist"];
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -149,7 +150,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
                       ),
                       SizedBox(height: 8),
                       Text(
-                        "Your dashboard",
+                        "Your dermatology dashboard",
                         style: TextStyle(
                           color: Colors.white70,
                           fontSize: 15,
@@ -164,21 +165,26 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
                 // 🔵 DERMATOLOGIST CARD
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: dermId == null
+                  child: dermatologistUid == null
                       ? _noDermatologistCard()
                       : FutureBuilder<Map<String, dynamic>>(
-                          future: _loadDermatologist(dermId),
-                          builder: (context, snapshot) {
-                            if (!snapshot.hasData) {
+                          future:
+                              _loadDermatologist(dermatologistUid),
+                          builder: (context, dermSnapshot) {
+                            if (!dermSnapshot.hasData) {
                               return const Center(
-                                  child: CircularProgressIndicator());
+                                child: CircularProgressIndicator(),
+                              );
                             }
 
-                            final derm = snapshot.data!;
-                            final name =
-                                derm["name"] ?? "Dermatologist";
+                            final dermData = dermSnapshot.data!;
+                            final dermName =
+                                dermData["name"] ?? "Dermatologist";
 
-                            return _dermatologistCard(name);
+                            return _dermatologistCard(
+                              dermatologistUid: dermatologistUid,
+                              dermatologistName: dermName,
+                            );
                           },
                         ),
                 ),
@@ -204,8 +210,11 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
         padding: EdgeInsets.all(20),
         child: Row(
           children: [
-            Icon(Icons.warning_amber_rounded,
-                color: Colors.orange, size: 34),
+            Icon(
+              Icons.warning_amber_rounded,
+              color: Colors.orange,
+              size: 34,
+            ),
             SizedBox(width: 16),
             Expanded(
               child: Text(
@@ -219,13 +228,21 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
     );
   }
 
-  Widget _dermatologistCard(String name) {
+  Widget _dermatologistCard({
+    required String dermatologistUid,
+    required String dermatologistName,
+  }) {
     return InkWell(
       borderRadius: BorderRadius.circular(16),
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => const UploadScreen()),
+          MaterialPageRoute(
+            builder: (_) => PatientDermatologistScreen(
+              dermatologistUid: dermatologistUid,
+              dermatologistName: dermatologistName,
+            ),
+          ),
         );
       },
       child: Card(
@@ -237,20 +254,26 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
           padding: const EdgeInsets.all(20),
           child: Row(
             children: [
-              const Icon(Icons.verified_user,
-                  color: Colors.green, size: 34),
+              const Icon(
+                Icons.verified_user,
+                color: Colors.green,
+                size: 34,
+              ),
               const SizedBox(width: 16),
               Expanded(
                 child: Text(
-                  "Dermatologist:\n$name\n\nTap to upload images",
+                  "Dermatologist:\n$dermatologistName\n\nTap to view uploads",
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
-              const Icon(Icons.arrow_forward_ios,
-                  size: 16, color: Colors.grey),
+              const Icon(
+                Icons.arrow_forward_ios,
+                size: 16,
+                color: Colors.grey,
+              ),
             ],
           ),
         ),
