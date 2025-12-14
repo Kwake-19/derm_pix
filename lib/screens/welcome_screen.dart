@@ -89,7 +89,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                           "DermPix",
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 72,            // 🔥 Bigger title
+                            fontSize: 60,            // 🔥 Bigger title
                             fontWeight: FontWeight.w900,
                             letterSpacing: 1.5,
                           ),
