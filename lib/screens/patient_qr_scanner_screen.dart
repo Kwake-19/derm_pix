@@ -23,7 +23,7 @@ class _PatientQrScannerScreenState extends State<PatientQrScannerScreen> {
   Future<void> _handleScan(String rawValue) async {
     if (_isProcessing) return;
 
-    // ✅ QUICK FILTER — avoid decoding junk frames
+    // Quick filter for non-JSON frames
     if (!rawValue.trim().startsWith('{')) return;
 
     final user = FirebaseAuth.instance.currentUser;
@@ -33,7 +33,6 @@ class _PatientQrScannerScreenState extends State<PatientQrScannerScreen> {
       final decoded = jsonDecode(rawValue);
 
       if (decoded is! Map<String, dynamic>) return;
-
       if (decoded["type"] != "derm_pix_connect") return;
       if (decoded["doctorUid"] == null) return;
 
@@ -42,14 +41,12 @@ class _PatientQrScannerScreenState extends State<PatientQrScannerScreen> {
 
       final String doctorUid = decoded["doctorUid"];
 
-      // ✅ SAVE WHERE UI EXPECTS IT
-      await _db.child("users/${user.uid}").update({
-        "assignedDermatologist": doctorUid,
-      });
-
-      // ✅ ALSO ADD PATIENT TO DERMATOLOGIST LIST
+      // ✅ SINGLE SOURCE OF TRUTH
       await _db
-          .child("dermatologists/$doctorUid/patients/${user.uid}")
+          .child("dermatologists")
+          .child(doctorUid)
+          .child("patients")
+          .child(user.uid)
           .set(true);
 
       if (!mounted) return;
@@ -60,11 +57,14 @@ class _PatientQrScannerScreenState extends State<PatientQrScannerScreen> {
         ),
       );
 
-      Navigator.pop(context);
+      // ✅ RETURN SUCCESS TO HOME SCREEN
+      Navigator.pop(context, true);
     } catch (e) {
-      // ❌ Do nothing — ignore bad frames silently
-      _scannerController.start();
-      setState(() => _isProcessing = false);
+      // Restart scanner on failure
+      if (mounted) {
+        _scannerController.start();
+        setState(() => _isProcessing = false);
+      }
     }
   }
 

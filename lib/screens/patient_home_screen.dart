@@ -16,14 +16,22 @@ class PatientHomeScreen extends StatefulWidget {
 class _PatientHomeScreenState extends State<PatientHomeScreen> {
   int _currentIndex = 0;
 
-  final String uid = FirebaseAuth.instance.currentUser!.uid;
-  late final DatabaseReference _userRef;
+  final User? _user = FirebaseAuth.instance.currentUser;
+  late final Query _userRef;
 
   @override
   void initState() {
     super.initState();
-    // ✅ CORRECTED: Point directly to the dermatologists list node
-    _userRef = FirebaseDatabase.instance.ref("users/$uid/dermatologists");
+
+    if (_user == null) return;
+
+    final uid = _user!.uid;
+
+    // ✅ LISTEN TO DERMATOLOGISTS WHERE THIS PATIENT IS LINKED
+    _userRef = FirebaseDatabase.instance
+        .ref("dermatologists")
+        .orderByChild("patients/$uid")
+        .equalTo(true);
   }
 
   // 🔹 Load dermatologist profile
@@ -42,6 +50,12 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_user == null) {
+      return const Scaffold(
+        body: Center(child: Text("User not logged in")),
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF2F4F7),
 
@@ -49,22 +63,23 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF0B6F77),
         elevation: 0,
-        title: const Text(
-          "Home",
-          style: TextStyle(color: Colors.white),
-        ),
+        title: const Text("Home", style: TextStyle(color: Colors.white)),
         centerTitle: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.qr_code_scanner, color: Colors.white),
             tooltip: "Scan Dermatologist QR",
-            onPressed: () {
-              Navigator.push(
+            onPressed: () async {
+              final linked = await Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (_) => const PatientQrScannerScreen(),
                 ),
               );
+
+              if (linked == true) {
+                setState(() {});
+              }
             },
           ),
         ],
@@ -110,16 +125,12 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
               padding: const EdgeInsets.all(24),
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [
-                    Color(0xFF0B6F77),
-                    Color(0xFF04242A),
-                  ],
+                  colors: [Color(0xFF0B6F77), Color(0xFF04242A)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: BorderRadius.vertical(
-                  bottom: Radius.circular(28),
-                ),
+                borderRadius:
+                    BorderRadius.vertical(bottom: Radius.circular(28)),
               ),
               child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -135,10 +146,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
                   SizedBox(height: 8),
                   Text(
                     "Your dermatology dashboard",
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 15,
-                    ),
+                    style: TextStyle(color: Colors.white70),
                   ),
                 ],
               ),
@@ -159,46 +167,53 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
               child: StreamBuilder<DatabaseEvent>(
                 stream: _userRef.onValue,
                 builder: (context, snapshot) {
-                  // If we are still waiting for the initial connection
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
+                  if (snapshot.connectionState ==
+                      ConnectionState.waiting) {
+                    return const Center(
+                        child: CircularProgressIndicator());
                   }
 
-                  // If there is no data or the 'dermatologists' node is empty
-                  if (!snapshot.hasData || snapshot.data!.snapshot.value == null) {
+                  if (!snapshot.hasData ||
+                      snapshot.data!.snapshot.value == null) {
                     return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 20),
                       child: _noDermatologistCard(),
                     );
                   }
 
-                  // ✅ Convert the Map from Firebase into a List of UIDs
-                  final Map<dynamic, dynamic> dermsData = 
+                  final Map<dynamic, dynamic> data =
                       snapshot.data!.snapshot.value as Map;
-                  final List<String> dermUids = 
-                      dermsData.keys.map((key) => key.toString()).toList();
+
+                  final List<String> dermUids =
+                      data.keys.map((k) => k.toString()).toList();
 
                   return ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 20),
                     itemCount: dermUids.length,
                     itemBuilder: (context, index) {
-                      final String doctorUid = dermUids[index];
+                      final doctorUid = dermUids[index];
 
                       return FutureBuilder<Map<String, dynamic>>(
                         future: _loadDermatologist(doctorUid),
                         builder: (context, dermSnapshot) {
                           if (!dermSnapshot.hasData) {
                             return const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 8.0),
-                              child: LinearProgressIndicator(color: Color(0xFF0B6F77)),
+                              padding:
+                                  EdgeInsets.symmetric(vertical: 8),
+                              child: LinearProgressIndicator(
+                                  color: Color(0xFF0B6F77)),
                             );
                           }
 
                           final dermData = dermSnapshot.data!;
-                          final dermName = dermData["name"] ?? "Dermatologist";
+                          final dermName =
+                              dermData["name"] ?? "Dermatologist";
 
                           return Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
+                            padding:
+                                const EdgeInsets.only(bottom: 12),
                             child: _dermatologistCard(
                               dermatologistUid: doctorUid,
                               dermatologistName: dermName,
@@ -225,17 +240,13 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
     return Card(
       elevation: 3,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+          borderRadius: BorderRadius.circular(16)),
       child: const Padding(
         padding: EdgeInsets.all(20),
         child: Row(
           children: [
-            Icon(
-              Icons.warning_amber_rounded,
-              color: Colors.orange,
-              size: 34,
-            ),
+            Icon(Icons.warning_amber_rounded,
+                color: Colors.orange, size: 34),
             SizedBox(width: 16),
             Expanded(
               child: Text(
@@ -269,17 +280,13 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
       child: Card(
         elevation: 4,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+            borderRadius: BorderRadius.circular(16)),
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Row(
             children: [
-              const Icon(
-                Icons.verified_user,
-                color: Colors.green,
-                size: 34,
-              ),
+              const Icon(Icons.verified_user,
+                  color: Colors.green, size: 34),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(
@@ -288,22 +295,17 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
                     Text(
                       dermatologistName,
                       style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                      ),
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold),
                     ),
-                    const Text(
-                      "Specialist",
-                      style: TextStyle(fontSize: 14, color: Colors.grey),
-                    ),
+                    const Text("Specialist",
+                        style: TextStyle(
+                            fontSize: 14, color: Colors.grey)),
                   ],
                 ),
               ),
-              const Icon(
-                Icons.arrow_forward_ios,
-                size: 16,
-                color: Colors.grey,
-              ),
+              const Icon(Icons.arrow_forward_ios,
+                  size: 16, color: Colors.grey),
             ],
           ),
         ),
