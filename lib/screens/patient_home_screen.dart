@@ -22,7 +22,8 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
   @override
   void initState() {
     super.initState();
-    _userRef = FirebaseDatabase.instance.ref("users/$uid");
+    // ✅ CORRECTED: Point directly to the dermatologists list node
+    _userRef = FirebaseDatabase.instance.ref("users/$uid/dermatologists");
   }
 
   // 🔹 Load dermatologist profile
@@ -69,7 +70,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
         ],
       ),
 
-      // 🔷 BOTTOM NAV (NO UPLOAD HERE ❌)
+      // 🔷 BOTTOM NAV
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         selectedItemColor: const Color(0xFF0B6F77),
@@ -100,97 +101,117 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
 
       // 🔷 BODY
       body: SafeArea(
-        child: StreamBuilder<DatabaseEvent>(
-          stream: _userRef.onValue,
-          builder: (context, snapshot) {
-            if (!snapshot.hasData ||
-                snapshot.data!.snapshot.value == null) {
-              return const Center(
-                child: CircularProgressIndicator(),
-              );
-            }
-
-            final userData = Map<String, dynamic>.from(
-              snapshot.data!.snapshot.value as Map,
-            );
-
-            final String? dermatologistUid =
-                userData["assignedDermatologist"];
-
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 🔵 HEADER
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(24),
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Color(0xFF0B6F77),
-                        Color(0xFF04242A),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.vertical(
-                      bottom: Radius.circular(28),
-                    ),
-                  ),
-                  child: const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Welcome Back 👋",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(height: 8),
-                      Text(
-                        "Your dermatology dashboard",
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 15,
-                        ),
-                      ),
-                    ],
-                  ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 🔵 HEADER
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Color(0xFF0B6F77),
+                    Color(0xFF04242A),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
+                borderRadius: BorderRadius.vertical(
+                  bottom: Radius.circular(28),
+                ),
+              ),
+              child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Welcome Back 👋",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    "Your dermatology dashboard",
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 15,
+                    ),
+                  ),
+                ],
+              ),
+            ),
 
-                const SizedBox(height: 30),
+            const SizedBox(height: 20),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20),
+              child: Text(
+                "My Specialists",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+            const SizedBox(height: 10),
 
-                // 🔵 DERMATOLOGIST CARD
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: dermatologistUid == null
-                      ? _noDermatologistCard()
-                      : FutureBuilder<Map<String, dynamic>>(
-                          future:
-                              _loadDermatologist(dermatologistUid),
-                          builder: (context, dermSnapshot) {
-                            if (!dermSnapshot.hasData) {
-                              return const Center(
-                                child: CircularProgressIndicator(),
-                              );
-                            }
+            // 🔵 DERMATOLOGISTS LIST
+            Expanded(
+              child: StreamBuilder<DatabaseEvent>(
+                stream: _userRef.onValue,
+                builder: (context, snapshot) {
+                  // If we are still waiting for the initial connection
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
 
-                            final dermData = dermSnapshot.data!;
-                            final dermName =
-                                dermData["name"] ?? "Dermatologist";
+                  // If there is no data or the 'dermatologists' node is empty
+                  if (!snapshot.hasData || snapshot.data!.snapshot.value == null) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: _noDermatologistCard(),
+                    );
+                  }
 
-                            return _dermatologistCard(
-                              dermatologistUid: dermatologistUid,
-                              dermatologistName: dermName,
+                  // ✅ Convert the Map from Firebase into a List of UIDs
+                  final Map<dynamic, dynamic> dermsData = 
+                      snapshot.data!.snapshot.value as Map;
+                  final List<String> dermUids = 
+                      dermsData.keys.map((key) => key.toString()).toList();
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    itemCount: dermUids.length,
+                    itemBuilder: (context, index) {
+                      final String doctorUid = dermUids[index];
+
+                      return FutureBuilder<Map<String, dynamic>>(
+                        future: _loadDermatologist(doctorUid),
+                        builder: (context, dermSnapshot) {
+                          if (!dermSnapshot.hasData) {
+                            return const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 8.0),
+                              child: LinearProgressIndicator(color: Color(0xFF0B6F77)),
                             );
-                          },
-                        ),
-                ),
-              ],
-            );
-          },
+                          }
+
+                          final dermData = dermSnapshot.data!;
+                          final dermName = dermData["name"] ?? "Dermatologist";
+
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: _dermatologistCard(
+                              dermatologistUid: doctorUid,
+                              dermatologistName: dermName,
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -261,12 +282,21 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: Text(
-                  "Dermatologist:\n$dermatologistName\n\nTap to view uploads",
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      dermatologistName,
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Text(
+                      "Specialist",
+                      style: TextStyle(fontSize: 14, color: Colors.grey),
+                    ),
+                  ],
                 ),
               ),
               const Icon(

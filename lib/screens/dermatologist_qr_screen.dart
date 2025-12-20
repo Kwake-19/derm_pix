@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -8,7 +9,12 @@ class DermatologistQrScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final uid = FirebaseAuth.instance.currentUser!.uid;
-    final qrData = "DERM:$uid";
+
+    // ✅ MUST MATCH PATIENT SCANNER FORMAT
+    final String qrData = jsonEncode({
+      "type": "derm_pix_connect",
+      "doctorUid": uid,
+    });
 
     return Scaffold(
       backgroundColor: const Color(0xFF04242A),
@@ -60,6 +66,7 @@ class DermatologistQrScreen extends StatelessWidget {
                 child: QrImageView(
                   data: qrData,
                   size: 240,
+                  backgroundColor: Colors.white,
                 ),
               ),
 

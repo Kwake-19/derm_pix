@@ -14,34 +14,43 @@ class PatientQrScannerScreen extends StatefulWidget {
 
 class _PatientQrScannerScreenState extends State<PatientQrScannerScreen> {
   bool _isProcessing = false;
+
   final MobileScannerController _scannerController =
       MobileScannerController();
 
-  final DatabaseReference _dbRef =
-      FirebaseDatabase.instance.ref();
+  final DatabaseReference _db = FirebaseDatabase.instance.ref();
 
   Future<void> _handleScan(String rawValue) async {
     if (_isProcessing) return;
 
+    // ✅ QUICK FILTER — avoid decoding junk frames
+    if (!rawValue.trim().startsWith('{')) return;
+
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
-
-    setState(() => _isProcessing = true);
-    _scannerController.stop();
 
     try {
       final decoded = jsonDecode(rawValue);
 
-      if (decoded is! Map ||
-          decoded["type"] != "derm_pix_connect" ||
-          decoded["doctorUid"] == null) {
-        throw Exception("Invalid QR");
-      }
+      if (decoded is! Map<String, dynamic>) return;
 
-      await _dbRef.child("connections/${user.uid}").set({
-        "doctorUid": decoded["doctorUid"],
-        "connectedAt": ServerValue.timestamp,
+      if (decoded["type"] != "derm_pix_connect") return;
+      if (decoded["doctorUid"] == null) return;
+
+      setState(() => _isProcessing = true);
+      _scannerController.stop();
+
+      final String doctorUid = decoded["doctorUid"];
+
+      // ✅ SAVE WHERE UI EXPECTS IT
+      await _db.child("users/${user.uid}").update({
+        "assignedDermatologist": doctorUid,
       });
+
+      // ✅ ALSO ADD PATIENT TO DERMATOLOGIST LIST
+      await _db
+          .child("dermatologists/$doctorUid/patients/${user.uid}")
+          .set(true);
 
       if (!mounted) return;
 
@@ -52,15 +61,8 @@ class _PatientQrScannerScreenState extends State<PatientQrScannerScreen> {
       );
 
       Navigator.pop(context);
-    } catch (_) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Invalid or unsupported QR code"),
-        ),
-      );
-
+    } catch (e) {
+      // ❌ Do nothing — ignore bad frames silently
       _scannerController.start();
       setState(() => _isProcessing = false);
     }
