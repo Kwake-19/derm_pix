@@ -1,12 +1,9 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
-import 'package:image_picker/image_picker.dart';
 
-class PatientDermatologistScreen extends StatefulWidget {
-  // ✅ THESE MUST EXIST
+import 'upload_screen.dart'; // ✅ FIXED IMPORT
+
+class PatientDermatologistScreen extends StatelessWidget {
   final String dermatologistUid;
   final String dermatologistName;
 
@@ -16,238 +13,248 @@ class PatientDermatologistScreen extends StatefulWidget {
     required this.dermatologistName,
   });
 
-  @override
-  State<PatientDermatologistScreen> createState() =>
-      _PatientDermatologistScreenState();
-}
+  Future<Map<String, dynamic>> _loadDermProfile() async {
+    final snapshot = await FirebaseDatabase.instance
+        .ref("users/$dermatologistUid")
+        .get();
 
-class _PatientDermatologistScreenState
-    extends State<PatientDermatologistScreen> {
-  final String patientUid = FirebaseAuth.instance.currentUser!.uid;
-
-  final DatabaseReference _db = FirebaseDatabase.instance.ref();
-  final ImagePicker _picker = ImagePicker();
-
-  File? _selectedImage;
-  bool _uploading = false;
-
-  // ------------------
-  // PICK IMAGE
-  // ------------------
-  Future<void> _pickImage(ImageSource source) async {
-    final picked = await _picker.pickImage(
-      source: source,
-      imageQuality: 85,
-    );
-
-    if (picked != null) {
-      setState(() {
-        _selectedImage = File(picked.path);
-      });
-    }
+    return snapshot.exists
+        ? Map<String, dynamic>.from(snapshot.value as Map)
+        : {};
   }
 
-  // ------------------
-  // SAVE IMAGE (NO STORAGE)
-  // ------------------
-  Future<void> _saveUpload() async {
-    if (_selectedImage == null) return;
-
-    setState(() => _uploading = true);
-
-    try {
-      final uploadId = DateTime.now().millisecondsSinceEpoch.toString();
-
-      await _db
-          .child(
-              "uploads/$patientUid/${widget.dermatologistUid}/$uploadId")
-          .set({
-        "localPath": _selectedImage!.path,
-        "uploadedAt": ServerValue.timestamp,
-      });
-
-      if (!mounted) return;
-
-      setState(() {
-        _selectedImage = null;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Image uploaded successfully")),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Upload failed: $e")),
-      );
-    } finally {
-      if (mounted) setState(() => _uploading = false);
-    }
-  }
-
-  // ------------------
-  // UI
-  // ------------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF2F4F7),
+      backgroundColor: const Color(0xFFF2F6F7),
 
+      // 🔷 APP BAR
       appBar: AppBar(
         backgroundColor: const Color(0xFF0B6F77),
         elevation: 0,
-        title: Text(
-          widget.dermatologistName,
-          style: const TextStyle(color: Colors.white),
-        ),
+        title: const Text("My Specialist"),
         centerTitle: true,
       ),
 
-      body: Column(
+      body: FutureBuilder<Map<String, dynamic>>(
+        future: _loadDermProfile(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final data = snapshot.data!;
+          final specialty =
+              data["specialty"] ?? "Dermatology Specialist";
+
+          return Column(
+            children: [
+              _profileHeader(dermatologistName, specialty),
+              Expanded(child: _actions(context)),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  // ─────────────────────────
+  // PROFILE HEADER
+  // ─────────────────────────
+  Widget _profileHeader(String name, String specialty) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(24, 28, 24, 36),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF0B6F77), Color(0xFF05363B)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.vertical(
+          bottom: Radius.circular(32),
+        ),
+      ),
+      child: Row(
         children: [
-          // ------------------
-          // UPLOAD PREVIEW
-          // ------------------
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Container(
-              height: 220,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: Colors.grey.shade300),
-              ),
-              child: _selectedImage == null
-                  ? const Center(
-                      child: Text(
-                        "No image selected",
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                    )
-                  : ClipRRect(
-                      borderRadius: BorderRadius.circular(18),
-                      child: Image.file(
-                        _selectedImage!,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
+          const CircleAvatar(
+            radius: 34,
+            backgroundColor: Colors.white,
+            child: Icon(
+              Icons.verified_user,
+              color: Color(0xFF0B6F77),
+              size: 36,
             ),
           ),
-
-          // ------------------
-          // BUTTONS
-          // ------------------
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          const SizedBox(width: 18),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _actionButton(
-                icon: Icons.camera_alt,
-                label: "Camera",
-                onTap: () => _pickImage(ImageSource.camera),
+              Text(
+                name,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-              _actionButton(
-                icon: Icons.photo_library,
-                label: "Gallery",
-                onTap: () => _pickImage(ImageSource.gallery),
+              const SizedBox(height: 4),
+              Text(
+                specialty,
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 14,
+                ),
               ),
             ],
-          ),
-
-          const SizedBox(height: 16),
-
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed:
-                    (_selectedImage != null && !_uploading)
-                        ? _saveUpload
-                        : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0B6F77),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-                child: _uploading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text(
-                        "Upload Photo",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 20),
-
-          // ------------------
-          // PREVIOUS UPLOADS
-          // ------------------
-          Expanded(
-            child: StreamBuilder<DatabaseEvent>(
-              stream: _db
-                  .child(
-                      "uploads/$patientUid/${widget.dermatologistUid}")
-                  .onValue,
-              builder: (context, snapshot) {
-                if (!snapshot.hasData ||
-                    snapshot.data!.snapshot.value == null) {
-                  return const Center(
-                    child: Text("No uploads yet"),
-                  );
-                }
-
-                final uploads = Map<String, dynamic>.from(
-                  snapshot.data!.snapshot.value as Map,
-                );
-
-                return ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: uploads.values.map<Widget>((item) {
-                    final path = item["localPath"];
-
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(14),
-                        child: Image.file(
-                          File(path),
-                          height: 200,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                );
-              },
-            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _actionButton({
+  // ─────────────────────────
+  // ACTIONS
+  // ─────────────────────────
+  Widget _actions(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Care Actions",
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // ⭐ PRIMARY ACTION
+          _primaryAction(
+            context,
+            icon: Icons.photo_camera,
+            title: "Upload Skin Photo",
+            subtitle:
+                "Send new progress photos to your dermatologist",
+            onTap: () {
+              // ✅ FIXED NAVIGATION
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => UploadScreen(
+                    dermatologistUid: dermatologistUid,
+                  ),
+                ),
+              );
+            },
+          ),
+
+          const SizedBox(height: 20),
+
+          // SECONDARY ACTIONS
+          _secondaryAction(
+            icon: Icons.timeline,
+            title: "Treatment Timeline",
+            subtitle: "View previously uploaded photos",
+            onTap: () {
+              // TODO: timeline screen
+            },
+          ),
+
+          _secondaryAction(
+            icon: Icons.info_outline,
+            title: "Care Instructions",
+            subtitle: "View notes from your dermatologist",
+            onTap: () {
+              // TODO: instructions screen
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─────────────────────────
+  // UI COMPONENTS
+  // ─────────────────────────
+  Widget _primaryAction(
+    BuildContext context, {
     required IconData icon,
-    required String label,
+    required String title,
+    required String subtitle,
     required VoidCallback onTap,
   }) {
-    return Column(
-      children: [
-        IconButton(
-          iconSize: 36,
-          icon: Icon(icon, color: const Color(0xFF0B6F77)),
-          onPressed: onTap,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0B6F77),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: const [
+            BoxShadow(
+              color: Color.fromARGB(30, 0, 0, 0), // ✅ replaces withOpacity
+              blurRadius: 14,
+              offset: Offset(0, 8),
+            ),
+          ],
         ),
-        Text(label),
-      ],
+        child: Row(
+          children: [
+            Icon(icon, color: Colors.white, size: 36),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios,
+                color: Colors.white, size: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _secondaryAction({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(vertical: 8),
+      leading: Icon(icon, color: const Color(0xFF0B6F77)),
+      title: Text(
+        title,
+        style: const TextStyle(fontWeight: FontWeight.w600),
+      ),
+      subtitle: Text(subtitle),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: onTap,
     );
   }
 }
+
 

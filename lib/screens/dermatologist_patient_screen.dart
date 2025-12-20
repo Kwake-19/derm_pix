@@ -1,119 +1,120 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 
 class DermatologistPatientScreen extends StatelessWidget {
   final String patientUid;
-  final String patientName;
 
   const DermatologistPatientScreen({
     super.key,
     required this.patientUid,
-    required this.patientName,
   });
+
+  Future<Map<String, dynamic>> _loadPatientProfile() async {
+    final snapshot =
+        await FirebaseDatabase.instance.ref("users/$patientUid").get();
+
+    return Map<String, dynamic>.from(snapshot.value as Map);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final DatabaseReference uploadsRef =
-        FirebaseDatabase.instance.ref("uploads/$patientUid");
-
     return Scaffold(
-      backgroundColor: const Color(0xFFF2F4F7),
-
-      // 🔷 APP BAR
+      backgroundColor: const Color(0xFFF2F6F7),
       appBar: AppBar(
         backgroundColor: const Color(0xFF0B6F77),
-        elevation: 0,
-        title: Text(
-          patientName,
-          style: const TextStyle(color: Colors.white),
-        ),
+        title: const Text("Patient Details"),
         centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
       ),
-
-      // 🔷 BODY
-      body: StreamBuilder<DatabaseEvent>(
-        stream: uploadsRef.onValue,
+      body: FutureBuilder<Map<String, dynamic>>(
+        future: _loadPatientProfile(),
         builder: (context, snapshot) {
-          if (!snapshot.hasData ||
-              snapshot.data!.snapshot.value == null) {
-            return const Center(
-              child: Text(
-                "No uploads yet",
-                style: TextStyle(fontSize: 16),
-              ),
-            );
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
           }
 
-          final Map<String, dynamic> uploads =
-              Map<String, dynamic>.from(
-            snapshot.data!.snapshot.value as Map,
-          );
+          final data = snapshot.data!;
+          final name = data["name"] ?? "Patient";
 
-          final uploadEntries = uploads.entries.toList()
-            ..sort(
-              (a, b) =>
-                  (b.value["uploadedAt"] ?? 0)
-                      .compareTo(a.value["uploadedAt"] ?? 0),
-            );
+          return Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _patientHeader(name),
+                const SizedBox(height: 30),
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: uploadEntries.length,
-            itemBuilder: (context, index) {
-              final upload = uploadEntries[index].value;
-              final path = upload["localPath"];
-
-              return Card(
-                elevation: 4,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+                _actionCard(
+                  icon: Icons.photo_library,
+                  title: "View Uploads",
+                  subtitle: "See submitted skin images",
+                  onTap: () {
+                    // TODO: navigate to uploads timeline
+                  },
                 ),
-                margin: const EdgeInsets.only(bottom: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // 🖼 IMAGE
-                    ClipRRect(
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(16),
-                      ),
-                      child: Image.file(
-                        File(path),
-                        height: 220,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
 
-                    // 📅 META
-                    Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Row(
-                        children: const [
-                          Icon(Icons.photo_camera, size: 18),
-                          SizedBox(width: 8),
-                          Text(
-                            "Patient upload",
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                _actionCard(
+                  icon: Icons.note_alt,
+                  title: "Clinical Notes",
+                  subtitle: "Add observations & diagnosis",
+                  onTap: () {
+                    // TODO: notes feature
+                  },
                 ),
-              );
-            },
+              ],
+            ),
           );
         },
       ),
     );
   }
+
+  Widget _patientHeader(String name) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        children: [
+          const CircleAvatar(
+            radius: 32,
+            backgroundColor: Color(0xFF0B6F77),
+            child: Icon(Icons.person, color: Colors.white, size: 32),
+          ),
+          const SizedBox(width: 16),
+          Text(
+            name,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _actionCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: ListTile(
+        leading: Icon(icon, color: const Color(0xFF0B6F77)),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+        subtitle: Text(subtitle),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: onTap,
+      ),
+    );
+  }
 }
+

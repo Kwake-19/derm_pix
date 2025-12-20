@@ -6,7 +6,12 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
 class UploadScreen extends StatefulWidget {
-  const UploadScreen({super.key});
+  final String dermatologistUid;
+
+  const UploadScreen({
+    super.key,
+    required this.dermatologistUid,
+  });
 
   @override
   State<UploadScreen> createState() => _UploadScreenState();
@@ -21,16 +26,23 @@ class _UploadScreenState extends State<UploadScreen> {
   final _storage = FirebaseStorage.instance;
   final _picker = ImagePicker();
 
+  // ─────────────────────────
+  // PICK IMAGE
+  // ─────────────────────────
   Future<void> _pickImage(ImageSource source) async {
     final picked = await _picker.pickImage(
       source: source,
       imageQuality: 85,
     );
-    if (picked != null) {
+
+    if (picked != null && mounted) {
       setState(() => _image = File(picked.path));
     }
   }
 
+  // ─────────────────────────
+  // UPLOAD IMAGE
+  // ─────────────────────────
   Future<void> _uploadImage() async {
     final user = _auth.currentUser;
     if (user == null || _image == null) return;
@@ -38,29 +50,25 @@ class _UploadScreenState extends State<UploadScreen> {
     setState(() => _uploading = true);
 
     try {
-      // 1️⃣ Check connection
-      final connectionSnap =
-          await _db.child("connections/${user.uid}").get();
+      final patientUid = user.uid;
+      final dermUid = widget.dermatologistUid;
 
-      if (!connectionSnap.exists) {
-        throw Exception("No dermatologist connected");
-      }
+      // Generate upload ID
+      final uploadId =
+          DateTime.now().millisecondsSinceEpoch.toString();
 
-      final doctorUid =
-          connectionSnap.child("doctorUid").value.toString();
+      // 1️⃣ Upload to Firebase Storage
+      final storageRef = _storage
+          .ref("uploads/$patientUid/$dermUid/$uploadId.jpg");
 
-      // 2️⃣ Upload to Storage
-      final uploadId = DateTime.now().millisecondsSinceEpoch.toString();
-      final ref = _storage
-          .ref("patient_uploads/${user.uid}/$uploadId.jpg");
+      await storageRef.putFile(_image!);
+      final imageUrl = await storageRef.getDownloadURL();
 
-      await ref.putFile(_image!);
-      final imageUrl = await ref.getDownloadURL();
-
-      // 3️⃣ Save metadata
-      await _db.child("uploads/${user.uid}/$uploadId").set({
+      // 2️⃣ Save metadata to Realtime Database
+      await _db
+          .child("uploads/$patientUid/$dermUid/$uploadId")
+          .set({
         "imageUrl": imageUrl,
-        "doctorUid": doctorUid,
         "uploadedAt": ServerValue.timestamp,
       });
 
@@ -72,14 +80,18 @@ class _UploadScreenState extends State<UploadScreen> {
 
       setState(() => _image = null);
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.toString())),
       );
     } finally {
-      setState(() => _uploading = false);
+      if (mounted) setState(() => _uploading = false);
     }
   }
 
+  // ─────────────────────────
+  // UI
+  // ─────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -93,7 +105,7 @@ class _UploadScreenState extends State<UploadScreen> {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            // Image preview
+            // 📷 IMAGE PREVIEW
             Container(
               height: 280,
               width: double.infinity,
@@ -120,7 +132,7 @@ class _UploadScreenState extends State<UploadScreen> {
 
             const SizedBox(height: 24),
 
-            // Buttons
+            // 📸 PICK BUTTONS
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
@@ -139,7 +151,7 @@ class _UploadScreenState extends State<UploadScreen> {
 
             const Spacer(),
 
-            // Upload button
+            // ⬆️ UPLOAD BUTTON
             SizedBox(
               width: double.infinity,
               height: 52,
@@ -153,7 +165,9 @@ class _UploadScreenState extends State<UploadScreen> {
                   ),
                 ),
                 child: _uploading
-                    ? const CircularProgressIndicator(color: Colors.white)
+                    ? const CircularProgressIndicator(
+                        color: Colors.white,
+                      )
                     : const Text(
                         "Upload Photo",
                         style: TextStyle(fontSize: 16),
@@ -166,6 +180,9 @@ class _UploadScreenState extends State<UploadScreen> {
     );
   }
 
+  // ─────────────────────────
+  // ACTION BUTTON
+  // ─────────────────────────
   Widget _actionButton({
     required IconData icon,
     required String label,
@@ -183,4 +200,3 @@ class _UploadScreenState extends State<UploadScreen> {
     );
   }
 }
-

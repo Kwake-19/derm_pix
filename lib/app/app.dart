@@ -1,19 +1,16 @@
 import 'package:flutter/material.dart';
 
-// Import screens from the screens folder
+// Import screens
 import '../screens/welcome_screen.dart';
 import '../screens/login_screen.dart';
 import '../screens/patient_home_screen.dart';
 import '../screens/dermatologist_home_screen.dart';
-import '../screens/upload_screen.dart';
 import '../screens/patient_detail_screen.dart';
 import '../screens/signup_screen.dart';
 import '../screens/patient_setup_screen.dart';
 import '../screens/dermatologist_setup_screen.dart';
 import '../screens/dermatologist_profile_screen.dart';
 import '../screens/dermatologist_qr_screen.dart';
-
-
 
 class DermPixApp extends StatelessWidget {
   const DermPixApp({super.key});
@@ -29,26 +26,30 @@ class DermPixApp extends StatelessWidget {
         scaffoldBackgroundColor: Colors.white,
       ),
 
-      // First screen shown
+      // Initial screen
       initialRoute: '/welcome',
 
       // App routes
       routes: {
         '/welcome': (_) => const WelcomeScreen(),
         '/login': (_) => const LoginScreen(),
-        '/patient-home': (_) =>  PatientHomeScreen(),
+
+        // Home screens
+        '/patient-home': (_) => const PatientHomeScreen(),
         '/dermatologist-home': (_) => const DermatologistHomeScreen(),
-        '/upload': (_) => const UploadScreen(),
+
+        // Setup & profile
+        '/signup': (_) => const SignUpScreen(),
+        '/patient-setup': (_) => const PatientSetupScreen(),
+        '/dermatologist-setup': (_) =>
+            const DermatologistSetupScreen(),
+        '/dermatologist-profile': (_) =>
+            const DermatologistProfileScreen(),
+        '/dermatologist-qr': (_) =>
+            const DermatologistQrScreen(),
+
+        // Patient detail (doctor-side)
         '/patient-detail': (_) => const PatientDetailScreen(),
-        '/signup': (context) => const SignUpScreen(),
-        '/patient-setup': (context) => const PatientSetupScreen(),
-        '/dermatologist-setup': (context) => const DermatologistSetupScreen(),
-        '/dermatologist-profile': (context) => const DermatologistProfileScreen(),
-        '/dermatologist-qr': (context) => const DermatologistQrScreen(),
-
-
-
-
       },
     );
   }

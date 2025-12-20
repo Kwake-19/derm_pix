@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 
+import 'dermatologist_patient_screen.dart';
+
 class DermatologistHomeScreen extends StatefulWidget {
   const DermatologistHomeScreen({super.key});
 
@@ -11,25 +13,42 @@ class DermatologistHomeScreen extends StatefulWidget {
 }
 
 class _DermatologistHomeScreenState extends State<DermatologistHomeScreen> {
-  final String dermUid = FirebaseAuth.instance.currentUser!.uid;
+  final User? _user = FirebaseAuth.instance.currentUser;
   late final DatabaseReference patientsRef;
 
   @override
   void initState() {
     super.initState();
-    patientsRef =
-        FirebaseDatabase.instance.ref("dermatologists/$dermUid/patients");
+
+    if (_user == null) return;
+
+    patientsRef = FirebaseDatabase.instance
+        .ref("dermatologists/${_user!.uid}/patients");
   }
 
+  // 🔹 Load patient public name
   Future<String> _loadPatientName(String patientUid) async {
-    final snapshot =
-        await FirebaseDatabase.instance.ref("users/$patientUid/name").get();
+    try {
+      final snapshot = await FirebaseDatabase.instance
+          .ref("users/$patientUid/name")
+          .get();
 
-    return snapshot.exists ? snapshot.value.toString() : "Unnamed Patient";
+      return snapshot.exists
+          ? snapshot.value.toString()
+          : "Unnamed Patient";
+    } catch (_) {
+      return "Unknown Patient";
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_user == null) {
+      return const Scaffold(
+        body: Center(child: Text("User not logged in")),
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF2F6F7),
 
@@ -43,17 +62,17 @@ class _DermatologistHomeScreenState extends State<DermatologistHomeScreen> {
 
       body: Column(
         children: [
-          // 🌈 HEADER
           _header(),
 
-          // 📋 PATIENT LIST
           Expanded(
             child: StreamBuilder<DatabaseEvent>(
               stream: patientsRef.onValue,
               builder: (context, snapshot) {
                 if (snapshot.connectionState ==
                     ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const Center(
+                    child: CircularProgressIndicator(),
+                  );
                 }
 
                 if (!snapshot.hasData ||
@@ -122,7 +141,9 @@ class _DermatologistHomeScreenState extends State<DermatologistHomeScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
+        borderRadius: BorderRadius.vertical(
+          bottom: Radius.circular(32),
+        ),
       ),
       child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -191,15 +212,17 @@ class _DermatologistHomeScreenState extends State<DermatologistHomeScreen> {
             borderRadius: BorderRadius.circular(18),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 12,
                 offset: const Offset(0, 6),
               ),
             ],
           ),
           child: ListTile(
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 20,
+              vertical: 14,
+            ),
             leading: CircleAvatar(
               radius: 24,
               backgroundColor: const Color(0xFF0B6F77),
@@ -218,19 +241,21 @@ class _DermatologistHomeScreenState extends State<DermatologistHomeScreen> {
                 fontSize: 16,
               ),
             ),
-            subtitle: const Padding(
-              padding: EdgeInsets.only(top: 4),
-              child: Text(
-                "Active patient",
-                style: TextStyle(color: Colors.grey),
-              ),
+            subtitle: const Text(
+              "Active patient",
+              style: TextStyle(color: Colors.grey),
             ),
             trailing: const Icon(Icons.chevron_right),
+
+            // ✅ FIXED NAVIGATION
             onTap: () {
-              Navigator.pushNamed(
+              Navigator.push(
                 context,
-                '/dermatologist-patient',
-                arguments: patientUid,
+                MaterialPageRoute(
+                  builder: (_) => DermatologistPatientScreen(
+                    patientUid: patientUid,
+                  ),
+                ),
               );
             },
           ),
@@ -239,4 +264,3 @@ class _DermatologistHomeScreenState extends State<DermatologistHomeScreen> {
     );
   }
 }
-
