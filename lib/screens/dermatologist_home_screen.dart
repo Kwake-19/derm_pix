@@ -12,7 +12,6 @@ class DermatologistHomeScreen extends StatefulWidget {
 
 class _DermatologistHomeScreenState extends State<DermatologistHomeScreen> {
   final String dermUid = FirebaseAuth.instance.currentUser!.uid;
-
   late final DatabaseReference patientsRef;
 
   @override
@@ -22,49 +21,70 @@ class _DermatologistHomeScreenState extends State<DermatologistHomeScreen> {
         FirebaseDatabase.instance.ref("dermatologists/$dermUid/patients");
   }
 
+  Future<String> _loadPatientName(String patientUid) async {
+    final snapshot =
+        await FirebaseDatabase.instance.ref("users/$patientUid/name").get();
+
+    return snapshot.exists ? snapshot.value.toString() : "Unnamed Patient";
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF04242A),
+      backgroundColor: const Color(0xFFF2F6F7),
 
-      // 🔷 APP BAR
+      // 🌊 APP BAR
       appBar: AppBar(
         backgroundColor: const Color(0xFF0B6F77),
         elevation: 0,
-        title: const Text(
-          "Dermatologist Dashboard",
-          style: TextStyle(color: Colors.white),
-        ),
+        title: const Text("My Patients"),
         centerTitle: true,
       ),
 
-      // 🔷 BODY
-      body: StreamBuilder<DatabaseEvent>(
-        stream: patientsRef.onValue,
-        builder: (context, snapshot) {
-          if (!snapshot.hasData ||
-              snapshot.data!.snapshot.value == null) {
-            return _emptyState();
-          }
+      body: Column(
+        children: [
+          // 🌈 HEADER
+          _header(),
 
-          final patients = Map<String, dynamic>.from(
-            snapshot.data!.snapshot.value as Map,
-          );
+          // 📋 PATIENT LIST
+          Expanded(
+            child: StreamBuilder<DatabaseEvent>(
+              stream: patientsRef.onValue,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState ==
+                    ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-          return ListView(
-            padding: const EdgeInsets.all(20),
-            children: patients.keys.map((patientUid) {
-              return _patientCard(patientUid);
-            }).toList(),
-          );
-        },
+                if (!snapshot.hasData ||
+                    snapshot.data!.snapshot.value == null) {
+                  return _emptyState();
+                }
+
+                final Map<dynamic, dynamic> patients =
+                    snapshot.data!.snapshot.value as Map;
+
+                final patientUids =
+                    patients.keys.map((e) => e.toString()).toList();
+
+                return ListView.builder(
+                  padding: const EdgeInsets.all(20),
+                  itemCount: patientUids.length,
+                  itemBuilder: (context, index) {
+                    return _patientCard(patientUids[index]);
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
 
-      // 🔷 BOTTOM NAV
+      // 🔻 BOTTOM NAV
       bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: const Color(0xFF0B6F77),
-        selectedItemColor: Colors.white,
-        unselectedItemColor: Colors.white70,
+        backgroundColor: Colors.white,
+        selectedItemColor: const Color(0xFF0B6F77),
+        unselectedItemColor: Colors.grey,
         currentIndex: 0,
         items: const [
           BottomNavigationBarItem(
@@ -91,42 +111,131 @@ class _DermatologistHomeScreenState extends State<DermatologistHomeScreen> {
     );
   }
 
-  // ------------------
-  // EMPTY STATE
-  // ------------------
-  Widget _emptyState() {
-    return const Center(
-      child: Text(
-        "No patients yet.\nAsk patients to scan your QR code.",
-        textAlign: TextAlign.center,
-        style: TextStyle(color: Colors.white70, fontSize: 16),
+  // 🌈 HEADER
+  Widget _header() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(24, 28, 24, 32),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF0B6F77), Color(0xFF05363B)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
+      ),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "Welcome back 👋",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            "Here are your connected patients",
+            style: TextStyle(color: Colors.white70),
+          ),
+        ],
       ),
     );
   }
 
-  // ------------------
-  // PATIENT CARD
-  // ------------------
+  // 🌫️ EMPTY STATE
+  Widget _emptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: const [
+            Icon(Icons.qr_code_scanner,
+                size: 72, color: Colors.grey),
+            SizedBox(height: 20),
+            Text(
+              "No patients yet",
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              "Share your QR code with patients\nto get started.",
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 👤 PATIENT CARD
   Widget _patientCard(String patientUid) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 14),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: ListTile(
-        leading: const Icon(Icons.person),
-        title: Text("Patient ID"),
-        subtitle: Text(patientUid),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-        onTap: () {
-          // ✅ THIS WILL GO TO A DERMATOLOGIST-SIDE SCREEN
-          Navigator.pushNamed(
-            context,
-            '/dermatologist-patient',
-            arguments: patientUid,
-          );
-        },
-      ),
+    return FutureBuilder<String>(
+      future: _loadPatientName(patientUid),
+      builder: (context, snapshot) {
+        final name = snapshot.data ?? "Loading...";
+        final initials =
+            name.isNotEmpty ? name[0].toUpperCase() : "?";
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 12,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: ListTile(
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            leading: CircleAvatar(
+              radius: 24,
+              backgroundColor: const Color(0xFF0B6F77),
+              child: Text(
+                initials,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            title: Text(
+              name,
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 16,
+              ),
+            ),
+            subtitle: const Padding(
+              padding: EdgeInsets.only(top: 4),
+              child: Text(
+                "Active patient",
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.pushNamed(
+                context,
+                '/dermatologist-patient',
+                arguments: patientUid,
+              );
+            },
+          ),
+        );
+      },
     );
   }
 }
