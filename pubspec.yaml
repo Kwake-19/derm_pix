@@ -16,6 +16,7 @@ dependencies:
   image_picker: ^1.0.7
   camera: ^0.10.5+9
   qr_flutter: ^4.1.0
+  intl: ^0.19.0
 
 
   # Firebase
@@ -24,6 +25,9 @@ dependencies:
   firebase_database: ^10.5.7
   firebase_storage: ^11.6.9
   mobile_scanner: ^5.0.0
+  
+  #Supabase
+  supabase_flutter: ^2.5.6
 
 dev_dependencies:
   flutter_test:

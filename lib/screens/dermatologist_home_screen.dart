@@ -23,7 +23,7 @@ class _DermatologistHomeScreenState extends State<DermatologistHomeScreen> {
     if (_user == null) return;
 
     patientsRef = FirebaseDatabase.instance
-        .ref("dermatologists/${_user!.uid}/patients");
+        .ref("dermatologists/${_user.uid}/patients");
   }
 
   // 🔹 Load patient public name

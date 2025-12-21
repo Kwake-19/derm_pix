@@ -25,7 +25,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
 
     if (_user == null) return;
 
-    final uid = _user!.uid;
+    final uid = _user.uid;
 
     // ✅ Listen to dermatologists linked to this patient
     _userRef = FirebaseDatabase.instance

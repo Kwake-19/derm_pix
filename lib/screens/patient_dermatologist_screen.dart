@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 
 import 'upload_screen.dart'; // ✅ FIXED IMPORT
+import 'patient_upload_timeline_screen.dart';
+
 
 class PatientDermatologistScreen extends StatelessWidget {
   final String dermatologistUid;
@@ -159,7 +161,15 @@ class PatientDermatologistScreen extends StatelessWidget {
             title: "Treatment Timeline",
             subtitle: "View previously uploaded photos",
             onTap: () {
-              // TODO: timeline screen
+              
+               Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                   builder: (_) => PatientUploadTimelineScreen(
+                     dermatologistUid: dermatologistUid,
+                     ),
+                  ),
+              );
             },
           ),
 

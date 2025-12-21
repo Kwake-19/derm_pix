@@ -1,9 +1,10 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
-import 'package:firebase_storage/firebase_storage.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class UploadScreen extends StatefulWidget {
   final String dermatologistUid;
@@ -23,8 +24,9 @@ class _UploadScreenState extends State<UploadScreen> {
 
   final _auth = FirebaseAuth.instance;
   final _db = FirebaseDatabase.instance.ref();
-  final _storage = FirebaseStorage.instance;
   final _picker = ImagePicker();
+
+  final SupabaseClient _supabase = Supabase.instance.client;
 
   // ─────────────────────────
   // PICK IMAGE
@@ -41,7 +43,7 @@ class _UploadScreenState extends State<UploadScreen> {
   }
 
   // ─────────────────────────
-  // UPLOAD IMAGE
+  // UPLOAD IMAGE (SUPABASE)
   // ─────────────────────────
   Future<void> _uploadImage() async {
     final user = _auth.currentUser;
@@ -52,30 +54,45 @@ class _UploadScreenState extends State<UploadScreen> {
     try {
       final patientUid = user.uid;
       final dermUid = widget.dermatologistUid;
-
-      // Generate upload ID
       final uploadId =
           DateTime.now().millisecondsSinceEpoch.toString();
 
-      // 1️⃣ Upload to Firebase Storage
-      final storageRef = _storage
-          .ref("uploads/$patientUid/$dermUid/$uploadId.jpg");
+      // 📁 Storage path inside Supabase
+      final storagePath =
+          '$patientUid/$dermUid/$uploadId.jpg';
 
-      await storageRef.putFile(_image!);
-      final imageUrl = await storageRef.getDownloadURL();
+      // 1️⃣ Upload file to Supabase Storage
+      await _supabase.storage
+          .from('patient-uploads')
+          .upload(
+            storagePath,
+            _image!,
+            fileOptions: const FileOptions(
+              contentType: 'image/jpeg',
+              upsert: false,
+            ),
+          );
 
-      // 2️⃣ Save metadata to Realtime Database
+      // 2️⃣ Generate signed URL (24h expiry)
+      final signedUrl = await _supabase.storage
+          .from('patient-uploads')
+          .createSignedUrl(storagePath, 60 * 60 * 24);
+
+      // 3️⃣ Save metadata to Firebase Realtime DB
       await _db
-          .child("uploads/$patientUid/$dermUid/$uploadId")
+          .child('uploads/$patientUid/$dermUid/$uploadId')
           .set({
-        "imageUrl": imageUrl,
-        "uploadedAt": ServerValue.timestamp,
+        'imageUrl': signedUrl,
+        'storagePath': '$patientUid/$dermUid/$uploadId.jpg',
+        'uploadedAt': ServerValue.timestamp,
       });
 
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Photo uploaded successfully")),
+        const SnackBar(
+          content: Text('Photo uploaded successfully'),
+        ),
       );
 
       setState(() => _image = null);
@@ -97,7 +114,7 @@ class _UploadScreenState extends State<UploadScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFF04242A),
       appBar: AppBar(
-        title: const Text("Upload Progress Photo"),
+        title: const Text('Upload Progress Photo'),
         backgroundColor: const Color(0xFF0B6F77),
         centerTitle: true,
       ),
@@ -117,7 +134,7 @@ class _UploadScreenState extends State<UploadScreen> {
               child: _image == null
                   ? const Center(
                       child: Text(
-                        "No image selected",
+                        'No image selected',
                         style: TextStyle(color: Colors.white70),
                       ),
                     )
@@ -138,12 +155,12 @@ class _UploadScreenState extends State<UploadScreen> {
               children: [
                 _actionButton(
                   icon: Icons.camera_alt,
-                  label: "Camera",
+                  label: 'Camera',
                   onTap: () => _pickImage(ImageSource.camera),
                 ),
                 _actionButton(
                   icon: Icons.photo_library,
-                  label: "Gallery",
+                  label: 'Gallery',
                   onTap: () => _pickImage(ImageSource.gallery),
                 ),
               ],
@@ -169,7 +186,7 @@ class _UploadScreenState extends State<UploadScreen> {
                         color: Colors.white,
                       )
                     : const Text(
-                        "Upload Photo",
+                        'Upload Photo',
                         style: TextStyle(fontSize: 16),
                       ),
               ),
