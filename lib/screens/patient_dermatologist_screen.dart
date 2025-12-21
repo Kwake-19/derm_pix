@@ -3,6 +3,8 @@ import 'package:firebase_database/firebase_database.dart';
 
 import 'upload_screen.dart'; // ✅ FIXED IMPORT
 import 'patient_upload_timeline_screen.dart';
+import 'patient_upload_notes_screen.dart';
+
 
 
 class PatientDermatologistScreen extends StatelessWidget {
@@ -178,7 +180,15 @@ class PatientDermatologistScreen extends StatelessWidget {
             title: "Care Instructions",
             subtitle: "View notes from your dermatologist",
             onTap: () {
-              // TODO: instructions screen
+              
+              Navigator.push(
+                context,
+                 MaterialPageRoute(
+                     builder: (_) => PatientUploadNotesScreen(
+                        dermatologistUid: dermatologistUid,
+                      ),
+                  ),
+              );
             },
           ),
         ],
